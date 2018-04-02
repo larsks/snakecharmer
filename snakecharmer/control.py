@@ -1,10 +1,8 @@
 import uasyncio as asyncio
 
-import hardware
 import json
-import tasks
-import utils
-import webserver
+from snakecharmer import tasks
+from snakecharmer import webserver
 
 sensors = {}
 config = {}

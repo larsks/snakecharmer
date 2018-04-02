@@ -1,7 +1,7 @@
 import hardware as hw
 import uasyncio as asyncio
 import ubinascii as binascii
-import utils
+from snakecharmer import utils
 
 
 async def task_display(sensors, config, wait_on=None):

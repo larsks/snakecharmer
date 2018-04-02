@@ -5,12 +5,13 @@ MPYCROSS = mpy-cross
 
 CONFIG = config.json
 SRCS = \
-	control.py \
+	snakecharmer/__init__.py \
+	snakecharmer/control.py \
+	snakecharmer/tasks.py \
+	snakecharmer/utils.py \
+	snakecharmer/webserver.py \
 	hardware.py \
-	tasks.py \
-	utils.py \
-	tm1637.py \
-	webserver.py
+	tm1637.py
 
 OBJS = $(SRCS:.py=.mpy)
 
@@ -25,8 +26,9 @@ check:
 install: .lastinstall
 
 .lastinstall: $(OBJS)
+	$(AMPY) mkdir --exists-okay snakecharmer && \
 	for src in $?; do \
-		$(AMPY) put $$src; \
+		$(AMPY) put $$src $$src; \
 	done && date > $@
 
 clean:
