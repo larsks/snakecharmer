@@ -47,8 +47,6 @@ class Control:
         self.last_read = 0
 
         self.init_timer()
-        self.init_socket()
-        self.init_poll()
 
     def init_timer(self):
         self.t_update = machine.Timer(-1)
@@ -117,7 +115,7 @@ class Control:
 
         delta = int(self.check_interval * 0.9)
 
-        last_check = 0
+        last_check = time.ticks_ms()
         while True:
             events = poll.poll(self.check_interval)
             now = time.ticks_ms()
@@ -137,6 +135,7 @@ class Control:
                     self.handle_client(client, addr)
 
     def handle_sensor(self, sensor_name, k, low, high, relay_name):
+        print('* handling sensor %s' % (sensor_name,))
         sensor = self.sensors.get(sensor_name)
         if sensor is None:
             print('! no reading for sensor %s' % (sensor_name,))
@@ -201,6 +200,9 @@ class Control:
             relay.on()
 
     def start(self):
+        self.init_socket()
+        self.init_poll()
+
         try:
             self.start_timer()
             self.loop()
