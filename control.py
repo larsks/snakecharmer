@@ -12,6 +12,21 @@ config = {}
 
 def request_handler(reader, writer):
     yield from webserver.handle_request(reader, writer, sensors, config)
+class Event:
+    def __init__(self):
+        self.clear()
+
+    def clear(self):
+        self.flag = False
+
+    def set(self):
+        self.flag = True
+
+    def __await__(self):
+        while not self.flag:
+            yield from asyncio.sleep(0)
+
+    __iter__ = __await__
 
 
 def main():
@@ -19,10 +34,11 @@ def main():
         config.update(json.load(fd))
 
     loop = asyncio.get_event_loop()
+    sensors_ready = Event()
 
-    t_display = tasks.task_display(sensors, config)
-    t_control = tasks.task_control(sensors, config)
-    t_reader = tasks.task_read_sensors(sensors, config)
+    t_display = tasks.task_display(sensors, config, wait_on=sensors_ready)
+    t_control = tasks.task_control(sensors, config, wait_on=sensors_ready)
+    t_reader = tasks.task_read_sensors(sensors, config, notify=sensors_ready)
     t_webserver = asyncio.start_server(
         request_handler, '0.0.0.0', 80)
 

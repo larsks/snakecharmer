@@ -4,8 +4,12 @@ import ubinascii as binascii
 import utils
 
 
-async def task_display(sensors, config):
+async def task_display(sensors, config, wait_on=None):
     hw.display.show('RUN ')
+
+    if wait_on is not None:
+        print('* display: waiting for sensors')
+        await wait_on
 
     try:
         while True:
@@ -30,7 +34,7 @@ async def task_display(sensors, config):
         hw.display.show('STOP')
 
 
-async def task_read_sensors(sensors, config):
+async def task_read_sensors(sensors, config, notify=None):
     while True:
         for bus in hw.sensors_ds:
             bus.convert_temp()
@@ -55,6 +59,8 @@ async def task_read_sensors(sensors, config):
             sensors[id] = {'t': temp, 'h': humid}
 
         print('# sensors:', sensors)
+        if notify is not None:
+            notify.set()
         await asyncio.sleep(config['read_interval'])
 
 
@@ -93,7 +99,11 @@ def _handle_sensor(sensors, config, sensor_name, k, relay_name):
         relay.on()
 
 
-async def task_control(sensors, config):
+async def task_control(sensors, config, wait_on=None):
+    if wait_on is not None:
+        print('* control: waiting for sensors')
+        await wait_on
+
     try:
         while True:
             _handle_sensor(sensors, config, 'temp1', 't', 'heat1')
