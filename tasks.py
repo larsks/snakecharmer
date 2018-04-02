@@ -74,7 +74,7 @@ def _handle_sensor(sensors, config, sensor_name, k, relay_name):
         print('! no relay named %s' % (relay_name,))
         return
 
-    if config.get('units', 'c') == 'f':
+    if config.get('units', 'c') == 'f' and k == 't':
         value = utils.C2F(value)
 
     low = config['%s_low' % (sensor_name,)]
