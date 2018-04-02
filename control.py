@@ -195,6 +195,11 @@ class Control:
         return {k: v.value()
                 for k, v in hw.relays.items()}
 
+    def relays_off(self):
+        print('* deactivating all relays')
+        for relay in hw.relays.values():
+            relay.on()
+
     def start(self):
         try:
             self.start_timer()
@@ -202,6 +207,7 @@ class Control:
         except KeyboardInterrupt:
             pass
         finally:
+            self.relays_off()
             self.close_socket()
             self.stop_timer()
 
