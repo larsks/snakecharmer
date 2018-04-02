@@ -26,7 +26,8 @@ def main():
     t_webserver = asyncio.start_server(
         request_handler, '0.0.0.0', 80)
 
-    for task in [t_display, t_control, t_reader, t_webserver]:
+    tasklist = [t_display, t_control, t_reader, t_webserver]
+    for task in tasklist:
         loop.create_task(task)
 
     try:
@@ -35,4 +36,5 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
-        [relay.on() for relay in hardware.relays.values()]
+        for task in tasklist:
+            task.close()
