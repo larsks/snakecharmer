@@ -1,4 +1,3 @@
-import config
 import hardware as hw
 import json
 import machine
@@ -115,7 +114,7 @@ class Control:
         poll = select.poll()
         self.poll = poll
 
-    def display(self):
+    def task_display(self):
         while True:
             for i, values in enumerate(self.sensors.values()):
                 for k, v in values.items():
@@ -145,7 +144,7 @@ class Control:
 
         last_check = time.ticks_ms()
         last_display = time.ticks_ms()
-        display = self.display()
+        display = self.task_display()
 
         while True:
             events = poll.poll(self.display_interval)
@@ -249,18 +248,3 @@ class Control:
             self.close_socket()
             self.stop_timer()
             hw.display.show('STOP')
-
-
-c = Control(
-    temp1_low=config.temp1_low,
-    temp1_high=config.temp1_high,
-    temp1_id=config.temp1_id,
-    temp2_low=config.temp2_low,
-    temp2_high=config.temp2_high,
-    temp2_id=config.temp2_id,
-    humid_low=config.humid_low,
-    humid_high=config.humid_high,
-    humid_id=config.humid_id,
-    display_f=True,
-)
-c.start()
