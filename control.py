@@ -5,11 +5,13 @@ import machine
 import select
 import socket
 import time
+import utils
 from ubinascii import hexlify
 
 default_check_interval = 30000
 default_sensor_interval = 10000
 default_prep_interval = 800
+default_display_interval = 1000
 
 
 class Control:
@@ -17,6 +19,8 @@ class Control:
                  check_interval=None,
                  sensor_interval=None,
                  prep_interval=None,
+                 display_interval=None,
+                 display_f=False,
                  temp1_low=None,
                  temp1_high=None,
                  temp1_id=None,
@@ -30,6 +34,8 @@ class Control:
         self.check_interval = check_interval or default_check_interval
         self.sensor_interval = sensor_interval or default_sensor_interval
         self.prep_interval = prep_interval or default_prep_interval
+        self.display_interval = display_interval or default_display_interval
+        self.display_f = display_f
 
         self.temp1_low = temp1_low
         self.temp1_high = temp1_high
@@ -88,6 +94,7 @@ class Control:
             humid = sensor.humidity()
             self.sensors[id] = {'t': temp, 'h': humid}
 
+        print('# sensors:', self.sensors)
         self.last_read = time.ticks_ms()
 
     def stop_timer(self):
@@ -108,19 +115,47 @@ class Control:
         poll = select.poll()
         self.poll = poll
 
+    def display(self):
+        while True:
+            for i, values in enumerate(self.sensors.values()):
+                for k, v in values.items():
+                    if k == 't' and self.display_f:
+                        v = '%0.1fF' % (utils.C2F(v),)
+                    elif k == 't':
+                        v = '%0.1fC' % (v,)
+                    else:
+                        v = '%0.1f' % (v,)
+
+                    hw.display.show('S%d %s' % (i, k))
+                    yield
+                    hw.display.show('%s    ' % (v,))
+                    yield
+
+            r = ['%d' % (not x.value(),) for x in hw.relays.values()]
+            hw.display.show('r%s' % (''.join(r)))
+            yield
+
     def loop(self):
         poll = self.poll
         server = self.server
         poll.register(server, select.POLLIN)
 
-        delta = int(self.check_interval * 0.9)
+        check_delta = int(self.check_interval * 0.9)
+        display_delta = int(self.display_interval * 0.9)
 
         last_check = time.ticks_ms()
+        last_display = time.ticks_ms()
+        display = self.display()
+
         while True:
-            events = poll.poll(self.check_interval)
+            events = poll.poll(self.display_interval)
             now = time.ticks_ms()
-            print('* sensors:', self.sensors)
-            if time.ticks_diff(now, last_check) >= delta:
+
+            if time.ticks_diff(now, last_display) >= display_delta:
+                next(display)
+                last_display = time.ticks_ms()
+
+            if time.ticks_diff(now, last_check) >= check_delta:
                 print('* running maintenance tasks')
                 last_check = time.ticks_ms()
                 self.do_maintenance()
@@ -204,6 +239,7 @@ class Control:
         self.init_poll()
 
         try:
+            hw.display.show('RUN ')
             self.start_timer()
             self.loop()
         except KeyboardInterrupt:
@@ -212,6 +248,7 @@ class Control:
             self.relays_off()
             self.close_socket()
             self.stop_timer()
+            hw.display.show('STOP')
 
 
 c = Control(
@@ -224,5 +261,6 @@ c = Control(
     humid_low=config.humid_low,
     humid_high=config.humid_high,
     humid_id=config.humid_id,
+    display_f=True,
 )
 c.start()
