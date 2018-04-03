@@ -35,10 +35,12 @@ check:
 install: .lastinstall
 
 .lastinstall: $(OBJS) $(STATIC)
-	$(AMPY) mkdir --exists-okay snakecharmer && \
+	@$(AMPY) mkdir --exists-okay snakecharmer && \
 	$(AMPY) mkdir --exists-okay static && \
 	for src in $?; do \
+		echo "install $$src"; \
 		$(AMPY) put $$src $$src; \
+		sleep 1; \
 	done && date > $@
 
 clean:
