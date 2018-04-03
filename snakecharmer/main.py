@@ -1,4 +1,5 @@
 import machine
+import sys
 import time
 
 from snakecharmer import control
@@ -9,7 +10,8 @@ try:
     control.main()
 except KeyboardInterrupt:
     pass
-except:  # NOQA
+except Exception as exc:
+    sys.print_exception(exc)
     print('* resetting in 10 seconds')
     time.sleep(10)
     machine.reset()
