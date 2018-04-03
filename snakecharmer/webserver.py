@@ -23,8 +23,9 @@ class Webserver:
             ('/sensors', 'GET', self.sensors),
             ('/relays', 'GET', self.relays),
             ('/config/(.*)', 'GET', self.get_one_config),
-            ('/config/(.*)', 'PUT', self.set_one_config),
-            ('/config', 'GET', self.config),
+            ('/config/(.*)', 'POST', self.set_one_config),
+            ('/config', 'GET', self.get_config),
+            ('/config', 'POST', self.set_config),
             ('/static/(.*)', 'GET', self.static),
 
             # must be last!
@@ -144,7 +145,15 @@ class Webserver:
                                  content=json.dumps(relays),
                                  content_type='application/json')
 
-    async def config(self, reader, writer, match):
+    async def get_config(self, reader, writer, match):
+        await self.send_response(writer,
+                                 content=json.dumps(self._config),
+                                 content_type='application/json')
+
+    async def set_config(self, reader, writer, match):
+        new_config = json.loads(await reader.read())
+        self._config.update(new_config)
+
         await self.send_response(writer,
                                  content=json.dumps(self._config),
                                  content_type='application/json')
