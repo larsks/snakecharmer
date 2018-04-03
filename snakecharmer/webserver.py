@@ -4,6 +4,14 @@ import ure as re
 import sys
 
 chunksize = const(256)  # NOQA
+content_type_map = {
+    'js': 'application/javascript',
+    'png': 'image/png',
+    'jpg': 'image/jpg',
+    'css': 'text/css',
+    'txt': 'text/plain',
+    'html': 'text/html',
+}
 
 
 class Webserver:
@@ -17,6 +25,7 @@ class Webserver:
             ('/config/(.*)', 'GET', self.get_one_config),
             ('/config/(.*)', 'PUT', self.set_one_config),
             ('/config', 'GET', self.config),
+            ('/static/(.*)', 'GET', self.static),
 
             # must be last!
             ('/', 'GET', self.index),
@@ -160,5 +169,19 @@ class Webserver:
                                  content_type='application/json')
 
     async def index(self, reader, writer, match):
-        with open('status.html', 'rb') as fd:
+        with open('/static/status.html', 'rb') as fd:
             await self.send_file(writer, fd, content_type='text/html')
+
+    async def static(self, reader, writer, match):
+        filename = match.group(1)
+        dot = filename.rfind('.')
+        if dot >= 0:
+            ext = filename[dot+1:]
+            content_type = content_type_map.get(
+                ext, 'application/octet-stream')
+        else:
+            content_type = 'application/octet-stream'
+
+        with open('/static/%s' % (filename,), 'rb') as fd:
+            await self.send_file(writer, fd,
+                                 content_type=content_type)

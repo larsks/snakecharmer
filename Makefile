@@ -14,7 +14,15 @@ SRCS = \
 	hardware.py \
 	tm1637.py
 
-OBJS = $(SRCS:.py=.mpy) config.json status.html
+STATIC = \
+	static/snakecharmer.js \
+	static/snakecharmer.css \
+	static/status.html \
+	static/toggleswitch.css \
+	static/atomic.js \
+	config.json
+
+OBJS = $(SRCS:.py=.mpy)
 
 %.mpy: %.py
 	$(MPYCROSS) $<
@@ -26,8 +34,9 @@ check:
 
 install: .lastinstall
 
-.lastinstall: $(OBJS)
+.lastinstall: $(OBJS) $(STATIC)
 	$(AMPY) mkdir --exists-okay snakecharmer && \
+	$(AMPY) mkdir --exists-okay static && \
 	for src in $?; do \
 		$(AMPY) put $$src $$src; \
 	done && date > $@

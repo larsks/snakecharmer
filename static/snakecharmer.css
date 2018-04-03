@@ -1,0 +1,10 @@
+@import url("/static/toggleswitch.css");
+
+tr {
+  text-align: left;
+}
+
+td, th {
+  border: thin solid black;
+  padding: 1ex;
+}
