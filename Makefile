@@ -6,6 +6,7 @@ MPYCROSS = mpy-cross
 CONFIG = config.json
 SRCS = \
 	snakecharmer/__init__.py \
+	snakecharmer/main.py \
 	snakecharmer/control.py \
 	snakecharmer/tasks.py \
 	snakecharmer/utils.py \

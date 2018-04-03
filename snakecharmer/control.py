@@ -46,8 +46,6 @@ def main():
     try:
         loop.run_forever()
         loop.close()
-    except KeyboardInterrupt:
-        pass
     finally:
         for task in tasklist:
             task.close()
