@@ -8,6 +8,7 @@ sensors = {}
 config = {}
 
 
+# via https://github.com/peterhinch/micropython-async/blob/master/asyn.py
 class Event:
     def __init__(self):
         self.clear()
