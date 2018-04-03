@@ -62,6 +62,12 @@ class Webserver:
 
     async def handle_request(self, reader, writer):
         line0 = None
+
+        try:
+            remote_addr = writer.get_extra_info('peername')[0]
+        except IndexError:
+            remote_addr = '(unknown)'
+
         while True:
             line = (await reader.readline())
             if not line or line == b'\r\n':
@@ -70,16 +76,16 @@ class Webserver:
             if line0 is None:
                 line0 = line.decode().strip().split(' ')
 
-        if len(line0) == 3:
-            verb, uri, version = line0
-        else:
-            verb, uri = line0[:2]
-            version = 'HTTP/1.0'
-
         try:
-            remote_addr = writer.get_extra_info('peername')[0]
-        except IndexError:
-            remote_addr = '(unknown)'
+            if len(line0) == 3:
+                verb, uri, version = line0
+            else:
+                verb, uri = line0[:2]
+                version = 'HTTP/1.0'
+        except (TypeError, ValueError):
+            print('! invalid request from', remote_addr)
+            await writer.aclose()
+            return
 
         print('* %s %s %s %s' % (
             remote_addr, verb, uri, version))
@@ -104,7 +110,7 @@ class Webserver:
                                  content_type='application/json')
 
     async def relays(self, writer):
-        relays = {k: v.value()
+        relays = {k: int(not v.value())
                   for k, v in hw.relays.items()}
 
         await self.send_response(writer,
