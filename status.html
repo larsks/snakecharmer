@@ -11,6 +11,57 @@ td, th {
   border: thin solid black;
   padding: 1ex;
 }
+
+/* from: https://www.w3schools.com/howto/howto_css_switch.asp */
+/* The switch - the box around the slider */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 60px;
+  height: 34px;
+}
+
+/* Hide default HTML checkbox */
+.switch input {display:none;}
+
+/* The slider */
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 26px;
+  width: 26px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+input:checked + .slider {
+  background-color: #2196F3;
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px #2196F3;
+}
+
+input:checked + .slider:before {
+  -webkit-transform: translateX(26px);
+  -ms-transform: translateX(26px);
+  transform: translateX(26px);
+}
 </style>
 
 
@@ -27,6 +78,13 @@ td, th {
     <p>Last update: <span id="lastupdate">(no data)</span></p>
 
     <h2>Sensors</h2>
+
+<p>
+    <label class="switch">
+      <input id="temp_f" type="checkbox">
+      <span class="slider"></span>
+    </label> Display temperature in °F
+</p>
 
     <table id='sensors'>
       <thead>
@@ -53,6 +111,7 @@ td, th {
     sensor_table = document.querySelector('#sensors');
     relay_table = document.querySelector('#relays');
     config_table = document.querySelector('#config');
+    temp_f = document.querySelector('#temp_f');
 
     var update_sensor_table = function(data, xhr) {
       console.log('updating sensor table')
@@ -76,10 +135,16 @@ td, th {
           sensor_table.appendChild(row);
         }
 
-        if (sensor.t)
-          row.cells[1].innerHTML = sensor.t;
+        if (sensor.t) {
+					if (temp_f.checked)
+						t = sensor.t * 1.8 + 32;
+					else
+						t = sensor.t;
+
+          row.cells[1].innerHTML = parseFloat(t).toFixed(2);
+				}
         if (sensor.h)
-          row.cells[2].innerHTML = sensor.h;
+          row.cells[2].innerHTML = parseFloat(sensor.h).toFixed(2);
       }
     }
 
