@@ -13,7 +13,7 @@ SRCS = \
 	hardware.py \
 	tm1637.py
 
-OBJS = $(SRCS:.py=.mpy)
+OBJS = $(SRCS:.py=.mpy) config.json status.html
 
 %.mpy: %.py
 	$(MPYCROSS) $<

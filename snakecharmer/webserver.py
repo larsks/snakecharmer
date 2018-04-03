@@ -1,6 +1,8 @@
 import hardware as hw
 import json
 
+chunksize = const(256)  # NOQA
+
 
 class Webserver:
     def __init__(self, sensors, config):
@@ -14,30 +16,60 @@ class Webserver:
             ('/relays', 'GET'): self.relays,
         }
 
-    async def send_response(self, writer,
-                            status=200,
-                            status_text='OK',
-                            message=None,
-                            content_type='text/plain'):
-        if message is None:
-            message = status_text + '\r\n'
-
+    async def send_header(self, writer,
+                          status=200,
+                          status_text='OK',
+                          content_type='text/plain',
+                          **headers):
         await writer.awrite('HTTP/1.1 %d %s\r\n' % (status, status_text))
         await writer.awrite('Content-type: %s\r\n' % (content_type,))
-        await writer.awrite('Content-length: %d\r\n' % (len(message),))
+        for hdr, hdr_val in headers.items():
+            await writer.awrite('%s: %s\r\n' % (hdr, hdr_val))
         await writer.awrite('\r\n')
-        await writer.awrite(message)
+
+    async def send_response(self, writer,
+                            content=None,
+                            status=200,
+                            status_text='OK',
+                            **kwargs):
+        if content is None:
+            content = status_text + '\r\n'
+
+        content_length = len(content)
+        await self.send_header(writer,
+                               status=status,
+                               status_text=status_text,
+                               content_length=content_length,
+                               **kwargs)
+
+        await writer.awrite(content)
+        await writer.aclose()
+
+    async def send_file(self, writer, content, **kwargs):
+        buf = bytearray(chunksize)
+        bufview = memoryview(buf)
+
+        await self.send_header(writer, **kwargs)
+
+        while True:
+            nb = content.readinto(buf)
+            if nb == 0:
+                break
+
+            await writer.awrite(bufview[:nb])
+
         await writer.aclose()
 
     async def handle_request(self, reader, writer):
-        data = (yield from reader.read())
-        lines = data.decode().split('\r\n')
+        line0 = None
+        while True:
+            line = (await reader.readline())
+            if not line or line == b'\r\n':
+                break
 
-        if not lines:
-            await writer.aclose()
-            return
+            if line0 is None:
+                line0 = line.decode().strip().split(' ')
 
-        line0 = lines.pop(0).split(' ')
         if len(line0) == 3:
             verb, uri, version = line0
         else:
@@ -52,18 +84,6 @@ class Webserver:
         print('* %s %s %s %s' % (
             remote_addr, verb, uri, version))
 
-        headers = {}
-        for line in lines:
-            if not line:
-                break
-
-            hdr_name, hdr_val = line.split(': ', 1)
-            headers[hdr_name] = hdr_val
-
-#        print('# request:', verb, '|', uri, '|', version)
-#        print('# headers:', headers)
-#        print('# routes:', self.routes)
-
         handler = self.routes.get((uri, verb))
         if handler is None:
             await self.send_response(writer,
@@ -75,12 +95,12 @@ class Webserver:
 
     async def sensors(self, writer):
         await self.send_response(writer,
-                                 message=json.dumps(self._sensors),
+                                 content=json.dumps(self._sensors),
                                  content_type='application/json')
 
     async def config(self, writer):
         await self.send_response(writer,
-                                 message=json.dumps(self._config),
+                                 content=json.dumps(self._config),
                                  content_type='application/json')
 
     async def relays(self, writer):
@@ -88,9 +108,10 @@ class Webserver:
                   for k, v in hw.relays.items()}
 
         await self.send_response(writer,
-                                 message=json.dumps(relays),
+                                 content=json.dumps(relays),
                                  content_type='application/json')
 
     async def index(self, writer):
-        await self.send_response(writer,
-                                 message='Running')
+        with open('status.html', 'rb') as fd:
+            await self.send_file(writer, fd,
+                                 content_type='text/html')
