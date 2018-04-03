@@ -24,6 +24,8 @@ td, th {
   <body>
     <h1>Snakecharmer status</h1>
 
+    <p>Last update: <span id="lastupdate">(no data)</span></p>
+
     <h2>Sensors</h2>
 
     <table id='sensors'>
@@ -44,14 +46,10 @@ td, th {
         </td>
       </tr>
     </table>
-
-    <h2>Configuration</h2>
-
-    <pre id='configuration'>
-    </pre>
   </body>
 
   <script>
+    lastupdate = document.querySelector('#lastupdate');
     sensor_table = document.querySelector('#sensors');
     relay_table = document.querySelector('#relays');
     config_table = document.querySelector('#config');
@@ -87,6 +85,28 @@ td, th {
 
     var update_relay_table = function(data, xhr) {
       console.log('updating relay table')
+
+      for (var relay_id in data) {
+        relay_state = data[relay_id]
+
+        var row = document.evaluate('//tr[@id="' + relay_id + '"]',
+          document, null,
+          XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+        if (!row) {
+          row = document.createElement('tr');
+          row.id = relay_id;
+
+          for (i=0; i < 2; i++) {
+            cell = document.createElement('td');
+            row.appendChild(cell);
+          }
+
+          row.cells[0].innerHTML = relay_id
+          relay_table.appendChild(row);
+        }
+
+        row.cells[1].innerHTML = relay_state
+      }
     }
 
     var get_sensors = function() {
@@ -102,8 +122,12 @@ td, th {
     var update_all = function() {
       get_sensors();
       get_relays();
+
+      var now = new Date();
+      lastupdate.innerHTML = now.toTimeString();
     }
 
+    update_all();
     var update_interval = setInterval(update_all, 10000);
   </script>
 </html>
