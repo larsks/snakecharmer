@@ -149,8 +149,11 @@ class Webserver:
     async def set_one_config(self, reader, writer, match):
         k = match.group(1)
         v = json.loads(await reader.read())
+        print('* set config[%s] = %s' % (k, v))
 
-        print('* setting config[%s] = %s' % (k, v))
+        if not isinstance(v, type(self._config[k])):
+            raise ValueError('wrong type for %s' % (k,))
+
         self._config[k] = v
         await self.send_response(writer,
                                  content=json.dumps(self._config[k]),
