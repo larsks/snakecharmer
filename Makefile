@@ -18,7 +18,6 @@ STATIC = \
 	static/snakecharmer.js \
 	static/snakecharmer.css \
 	static/status.html \
-	static/toggleswitch.css \
 	static/atomic.js \
 	config.json
 
@@ -32,11 +31,27 @@ all: $(OBJS)
 check:
 	tox
 
-install: .lastinstall
+install: install-code install-static
+	
+install-code: .install-obj
 
-.lastinstall: $(OBJS) $(STATIC)
+install-static: .install-static
+
+install-main: .install-main
+
+.install-main: main.py
+	$(AMPY) put main.py && date > $@
+
+.install-obj: $(OBJS)
 	@$(AMPY) mkdir --exists-okay snakecharmer && \
-	$(AMPY) mkdir --exists-okay static && \
+	for src in $?; do \
+		echo "install $$src"; \
+		$(AMPY) put $$src $$src; \
+		sleep 1; \
+	done && date > $@
+
+.install-static: $(STATIC)
+	@$(AMPY) mkdir --exists-okay static && \
 	for src in $?; do \
 		echo "install $$src"; \
 		$(AMPY) put $$src $$src; \
