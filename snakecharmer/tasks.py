@@ -40,7 +40,12 @@ async def task_read_sensors(sensors, config, notify=None):
             bus.convert_temp()
 
         for sensor in hw.sensors_dht:
-            sensor.measure()
+            while True:
+                try:
+                    sensor.measure()
+                    break
+                except OSError:
+                    await asyncio.sleep(2)
 
         # allow sensors to settle
         await asyncio.sleep(1)
