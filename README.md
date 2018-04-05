@@ -18,6 +18,17 @@ There are four tasks:
 The tasks are implement in `snakecharmer/tasks.py`, with the
 exception of the webserver, which is in `snakecharmer/webserver.py`.
 
+## Pinouts
+
+- D0 (GPIO16) -- reset configuration
+- D5 (GPIO14) -- relay
+- D6 (GPIO12) -- relay
+- D7 (GPIO13) -- relay
+- D3 (GPIO0) -- ds18b20
+- D4 (GPIO2) -- dht22
+- D1 (GPIO5) -- display CLK
+- D2 (GPIO4) -- display DIO
+
 ## License
 
 snakecharmer -- reptile cage environmental control  
