@@ -1,4 +1,3 @@
-import hardware as hw
 import json
 import ure as re
 import sys
@@ -12,25 +11,22 @@ content_type_map = {
     'txt': 'text/plain',
     'html': 'text/html',
 }
+default_content_type = 'application/octet-stream'
 
 
 class Webserver:
-    def __init__(self, sensors, config):
-        self._sensors = sensors
-        self._config = config
+    def __init__(self):
+        self._routes = []
+        self._static_path = '/static'
 
-        self.routes = (
-            ('/sensors', 'GET', self.sensors),
-            ('/relays', 'GET', self.relays),
-            ('/config/(.*)', 'GET', self.get_one_config),
-            ('/config/(.*)', 'POST', self.set_one_config),
-            ('/config', 'GET', self.get_config),
-            ('/config', 'POST', self.set_config),
-            ('/static/(.*)', 'GET', self.static),
+    def add_route(self, pattern, cb, method='GET'):
+        self._routes.append((pattern, method, cb))
 
-            # must be last!
-            ('/', 'GET', self.index),
-        )
+    def del_route(self, pattern, cb, method='GET'):
+        self._routes.remove((pattern, method, cb))
+
+    def clear_routes(self):
+        del self._routes[:]
 
     async def send_header(self, writer,
                           status=200,
@@ -51,11 +47,10 @@ class Webserver:
         if content is None:
             content = status_text + '\r\n'
 
-        content_length = len(content)
+        kwargs.update({'content-length': len(content)})
         await self.send_header(writer,
                                status=status,
                                status_text=status_text,
-                               content_length=content_length,
                                **kwargs)
 
         await writer.awrite(content)
@@ -78,6 +73,9 @@ class Webserver:
 
     async def _handle_request(self, reader, writer, remote_addr):
         line0 = None
+        req = {
+            'remote_addr': remote_addr,
+        }
 
         while True:
             line = (await reader.readline())
@@ -91,19 +89,26 @@ class Webserver:
                 line0 = line.decode().strip().split(' ')
 
         try:
-            verb, uri = line0[:2]
+            method, uri = line0[:2]
         except (TypeError, ValueError):
             print('! invalid request from', remote_addr)
             return
 
-        print('* %s %s %s' % (remote_addr, verb, uri))
+        req.update(dict(method=method, uri=uri))
+        print('* {remote_addr} {method} {uri}'.format(**req))
 
-        for route in self.routes:
-            match = re.match(route[0], uri)
+        for route in self._routes:
+            match = re.match(route[0] + '$', uri)
 
-            if match and route[1] == verb:
+            if match and route[1] == method:
+                req.update(dict(match=match))
                 handler = route[2]
-                await handler(reader, writer, match)
+                res = await handler(reader, writer, req)
+                if isinstance(res, (dict, list)):
+                    await self.send_response(
+                        writer,
+                        content_type='application/json',
+                        content=json.dumps(res))
                 break
         else:
             await self.send_response(writer,
@@ -126,71 +131,16 @@ class Webserver:
         finally:
             await writer.aclose()
 
-    async def sensors(self, reader, writer, match):
-        await self.send_response(writer,
-                                 content=json.dumps(self._sensors),
-                                 content_type='application/json')
-
-    async def one_sensor(self, reader, writer, match):
-        sensor_id = match.group(1)
-        await self.send_response(writer,
-                                 content=json.dumps(self._sensors[sensor_id]),
-                                 content_type='application/json')
-
-    async def relays(self, reader, writer, match):
-        relays = {k: int(not v.value())
-                  for k, v in hw.relays.items()}
-
-        await self.send_response(writer,
-                                 content=json.dumps(relays),
-                                 content_type='application/json')
-
-    async def get_config(self, reader, writer, match):
-        await self.send_response(writer,
-                                 content=json.dumps(self._config),
-                                 content_type='application/json')
-
-    async def set_config(self, reader, writer, match):
-        new_config = json.loads(await reader.read())
-        self._config.update(new_config)
-
-        await self.send_response(writer,
-                                 content=json.dumps(self._config),
-                                 content_type='application/json')
-
-    async def get_one_config(self, reader, writer, match):
-        k = match.group(1)
-        await self.send_response(writer,
-                                 content=json.dumps(self._config[k]),
-                                 content_type='application/json')
-
-    async def set_one_config(self, reader, writer, match):
-        k = match.group(1)
-        v = json.loads(await reader.read())
-        print('* set config[%s] = %s' % (k, v))
-
-        if not isinstance(v, type(self._config[k])):
-            raise ValueError('wrong type for %s' % (k,))
-
-        self._config[k] = v
-        await self.send_response(writer,
-                                 content=json.dumps(self._config[k]),
-                                 content_type='application/json')
-
-    async def index(self, reader, writer, match):
-        with open('/static/status.html', 'rb') as fd:
-            await self.send_file(writer, fd, content_type='text/html')
-
-    async def static(self, reader, writer, match):
-        filename = match.group(1)
+    async def static(self, reader, writer, req):
+        filename = req['match'].group(1)
         dot = filename.rfind('.')
         if dot >= 0:
             ext = filename[dot+1:]
             content_type = content_type_map.get(
-                ext, 'application/octet-stream')
+                ext, default_content_type)
         else:
-            content_type = 'application/octet-stream'
+            content_type = default_content_type
 
-        with open('/static/%s' % (filename,), 'rb') as fd:
+        with open('%s/%s' % (self._static_path, filename,), 'rb') as fd:
             await self.send_file(writer, fd,
                                  content_type=content_type)
