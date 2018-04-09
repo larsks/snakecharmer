@@ -19,8 +19,9 @@ STATIC = \
 	static/snakecharmer.js \
 	static/snakecharmer.css \
 	static/status.html \
-	static/atomic.js \
-	config.json
+	static/config.html \
+	static/config.js \
+	static/atomic.js
 
 OBJS = $(SRCS:.py=.mpy)
 
