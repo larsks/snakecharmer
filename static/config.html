@@ -1,0 +1,53 @@
+<html>
+
+  <head>
+    <title>Snakecharmer: Network configuration</title>
+    <link rel="stylesheet" href="/static/snakecharmer.css"></link>
+    <script src="/static/atomic.js" type="text/javascript"></script>
+  </head>
+
+  <body>
+
+    <h2>Network status</h2>
+
+    <table>
+      <tr>
+        <th>State</th>
+        <th>Connected</th>
+        <th>SSID</th>
+        <th>IP Address</th>
+      </tr>
+      <tr id="status">
+        <td>Unknown</td>
+        <td>No</td>
+        <td></td>
+        <td></td>
+      </tr>
+    </table>
+
+    <h2>Network configuration</h2>
+
+    <p id="message"></p>
+
+    <form>
+      <table>
+        <tr>
+          <td>Network</td>
+          <td><select id="ssid"></select> <a id="rescan"
+                                             href="#">Rescan</a></td>
+        </tr>
+        <tr>
+          <td>Password</td>
+          <td><input type="password" id="password"></td>
+        </tr>
+      </table>
+
+      <p>
+      <input type="button" id="connect" value="Connect">
+      <input type="button" id="reboot" Value="Reboot">
+      </p>
+    </form>
+    <script src="/static/config.js"></script>
+  </body>
+
+</html>

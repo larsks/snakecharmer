@@ -1,10 +1,12 @@
 import uasyncio as asyncio
-import gc
 import machine
 import sys
 import time
 
-import hardware as hw
+from snakecharmer import logging
+from snakecharmer import hardware
+from snakecharmer import config
+from snakecharmer import utils
 
 
 def handle_button_released(t):
@@ -12,69 +14,67 @@ def handle_button_released(t):
     button_released = True
 
 
-def file_exists(path):
-    try:
-        with open(path, 'r'):
-            return True
-    except OSError:
-        return False
-
-
 def check_config_mode():
     global button_released
     button_released = False
 
-    print('# check for flag file')
-    if not file_exists('/connected'):
-        print('# no flag file')
+    logging.debug('check for flag file')
+    if not utils.file_exists('/connected'):
+        logging.debug('no flag file')
         return True
 
-    print('# check for button')
-    if hw.btn_config.value() == 1:
-        print('# check for long press')
+    logging.debug('check for button')
+    if hardware.btn_config.value() == 1:
+        logging.debug('check for long press')
         try:
-            hw.btn_config.irq(trigger=machine.Pin.IRQ_FALLING,
-                              handler=handle_button_released)
+            hardware.btn_config.irq(trigger=machine.Pin.IRQ_FALLING,
+                                    handler=handle_button_released)
 
             time.sleep_ms(1000)
         finally:
-            hw.btn_config.irq(handler=None)
+            hardware.btn_config.irq(handler=None)
 
         if not button_released:
+            logging.debug('detected long press')
             return True
-    else:
-        print('# no button')
 
     return False
 
 
-try:
-    hw.display.show('boot')
-
-    if check_config_mode():
-        from snakecharmer import mode_config as mode
-        gc.collect()
-        hw.display.show('conf')
-    else:
-        from snakecharmer import mode_control as mode
-        gc.collect()
-        hw.display.show('run ')
-
-    loop = asyncio.get_event_loop()
-    tasks = mode.register_tasks()
-
+def main():
     try:
-        loop.run_forever()
-    finally:
-        hw.display('stop')
+        config.read_config()
+        logging.setLevel(config.config.get('loglevel', 'INFO'))
+        hardware.display.show('boot')
+
+        if check_config_mode():
+            from snakecharmer import mode_config as mode
+            logging.info('entering config mode')
+            hardware.display.show('conf')
+        else:
+            from snakecharmer import mode_control as mode
+            logging.info('entering control mode')
+            hardware.display.show('run ')
+
+        loop = asyncio.get_event_loop()
+        tasks = mode.init_tasks(loop)
 
         for task in tasks:
-            task.close()
+            loop.create_task(task)
 
-except KeyboardInterrupt:
-    pass
-except Exception as exc:
-    sys.print_exception(exc)
-    print('* resetting in 10 seconds')
-    time.sleep(10)
-    machine.reset()
+        try:
+            loop.run_forever()
+        finally:
+            hardware.display.show('stop')
+            logging.warning('snakecharmer has stopped')
+
+            for task in tasks:
+                task.close()
+
+    except KeyboardInterrupt:
+        pass
+    except Exception as exc:
+        logging.error('caught exception -- resetting in 10 seconds')
+        sys.print_exception(exc)
+        time.sleep(10)
+        machine.reset()

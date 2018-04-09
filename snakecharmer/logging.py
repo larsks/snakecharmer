@@ -17,7 +17,18 @@ def setLevel(level):
     global loglevel
 
     if isinstance(level, str):
-        level = levelnames.index(level)
+        try:
+            level = levelnames.index(level)
+        except ValueError:
+            error('unknown log level: %s' % (level,))
+            return
+    elif isinstance(level, int):
+        if level < 0 or level >= len(levelnames):
+            error('unknown log level: %d' % (level,))
+            return
+    else:
+        error('bad value for log level: %s' % (repr(level),))
+        return
 
     loglevel = level
 

@@ -7,13 +7,13 @@ CONFIG = config.json
 SRCS = \
 	snakecharmer/__init__.py \
 	snakecharmer/main.py \
-	snakecharmer/control.py \
-	snakecharmer/logging.py \
-	snakecharmer/tasks.py \
+	snakecharmer/mode_control.py \
 	snakecharmer/utils.py \
-	snakecharmer/webserver.py \
-	hardware.py \
-	tm1637.py
+	snakecharmer/logging.py \
+	snakecharmer/hardware.py \
+	snakecharmer/config.py \
+	snakecharmer/mode_config.py \
+	snakecharmer/webserver.py
 
 STATIC = \
 	static/snakecharmer.js \
@@ -34,7 +34,7 @@ check:
 
 install: install-code install-static
 	
-install-code: .install-obj
+install-code: .install-code
 
 install-static: .install-static
 
@@ -43,7 +43,7 @@ install-main: .install-main
 .install-main: main.py
 	$(AMPY) put main.py && date > $@
 
-.install-obj: $(OBJS)
+.install-code: $(OBJS)
 	@$(AMPY) mkdir --exists-okay snakecharmer && \
 	for src in $?; do \
 		echo "install $$src"; \
