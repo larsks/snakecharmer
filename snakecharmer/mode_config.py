@@ -28,12 +28,6 @@ class WebApp(webserver.Webserver):
 
         self.state = STATE_INITIAL
 
-        if iface.sta.isconnected():
-            if utils.file_exists('/connected'):
-                self.state = STATE_CONNECTED
-        else:
-            iface.disable_station()
-
         self.add_route('/api/status', self.api_status)
         self.add_route('/api/scan', self.api_scan)
         self.add_route('/api/connect', self.api_connect, 'POST')
@@ -89,9 +83,19 @@ class WebApp(webserver.Webserver):
             self.state = STATE_FAILED
         else:
             logging.info('connected to network %s' % (ssid,))
-            with open('/network.json', 'wb') as fd:
+            with open(iface.cfg_file, 'wb') as fd:
                 fd.write(json.dumps({'ssid': ssid, 'password': password}))
                 self.state = STATE_CONNECTED
+
+    async def wait_for_connection(self):
+        connected = (await iface.wait_for_connection(10000))
+        if connected:
+            logging.info('connection is active')
+            if utils.file_exists(iface.cfg_file):
+                self.state = STATE_CONNECTED
+        else:
+            logging.info('no connection')
+            iface.disable_station()
 
 
 def prep():
@@ -103,5 +107,7 @@ def init_tasks(loop):
 
     t_webserver = asyncio.start_server(
         ws.handle_request, '0.0.0.0', 80)
+
+    loop.run_until_complete(ws.wait_for_connection())
 
     return [t_webserver]
