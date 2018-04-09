@@ -12,15 +12,13 @@ from snakecharmer import webserver
 
 gc.collect()
 
-loop = None
-
 
 class WebApp(webserver.Webserver):
     connect_timeout = 30000
     mode = 'control'
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, loop):
+        super().__init__(loop)
 
         self.add_route('/', self.index)
 
@@ -29,7 +27,7 @@ class WebApp(webserver.Webserver):
             writer, '/static/status.html')
 
 
-def init_tasks(_loop):
+def init_tasks(loop):
     ws = WebApp(loop)
 
     t_webserver = asyncio.start_server(

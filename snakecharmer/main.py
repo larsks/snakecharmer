@@ -1,5 +1,6 @@
 import uasyncio as asyncio
 import machine
+import network
 import sys
 import time
 
@@ -41,6 +42,17 @@ def check_config_mode():
     return False
 
 
+def wait_for_connection():
+    logging.info('waiting for network')
+    sta = network.WLAN(network.STA_IF)
+    hardware.display.show('conn')
+    while not sta.isconnected():
+        machine.idle()
+
+    ifcfg = sta.ifconfig()
+    hardware.display.scroll(ifcfg[0])
+
+
 def main():
     try:
         config.read_config()
@@ -53,6 +65,7 @@ def main():
             hardware.display.show('conf')
         else:
             from snakecharmer import mode_control as mode
+            wait_for_connection()
             logging.info('entering control mode')
             hardware.display.show('run ')
 

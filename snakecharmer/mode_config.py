@@ -19,7 +19,6 @@ STATE_CONNECTED = 3
 
 sta = network.WLAN(network.STA_IF)
 ap = network.WLAN(network.AP_IF)
-loop = None
 
 
 class WebApp(webserver.Webserver):
@@ -118,7 +117,7 @@ class WebApp(webserver.Webserver):
         }
 
 
-def init_tasks(_loop):
+def init_tasks(loop):
     ws = WebApp(loop)
 
     t_webserver = asyncio.start_server(

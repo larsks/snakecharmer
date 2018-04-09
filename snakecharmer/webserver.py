@@ -33,8 +33,6 @@ class Webserver:
     mode = 'none'
 
     def __init__(self, loop):
-        assert loop is not None
-
         self._loop = loop
         self._routes = []
         self._static_path = '/static'
