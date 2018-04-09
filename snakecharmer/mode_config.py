@@ -6,6 +6,7 @@ import network
 import os
 import time
 
+from snakecharmer import iface
 from snakecharmer import logging
 from snakecharmer import utils
 from snakecharmer import webserver
@@ -17,9 +18,6 @@ STATE_CONNECTING = 1
 STATE_FAILED = 2
 STATE_CONNECTED = 3
 
-sta = network.WLAN(network.STA_IF)
-ap = network.WLAN(network.AP_IF)
-
 
 class WebApp(webserver.Webserver):
     connect_timeout = 30000
@@ -30,11 +28,11 @@ class WebApp(webserver.Webserver):
 
         self.state = STATE_INITIAL
 
-        if sta.isconnected():
+        if iface.sta.isconnected():
             if utils.file_exists('/connected'):
                 self.state = STATE_CONNECTED
         else:
-            sta.active(False)
+            iface.disable_station()
 
         self.add_route('/api/status', self.api_status)
         self.add_route('/api/scan', self.api_scan)
@@ -46,13 +44,15 @@ class WebApp(webserver.Webserver):
             writer, '/static/config.html')
 
     async def api_status(self, reader, writer, req):
-        return self.get_network_state()
+        data = {'state': self.state}
+        data.update(iface.get_network_state())
+        return data
 
     async def api_scan(self, reader, writer, req):
-        sta.active(True)
+        iface.enable_station()
         return [{'ssid': net[0], 'channel': net[2],
                  'rssi': net[3], 'authmode': net[4]}
-                for net in sorted(sta.scan(), key=lambda x: x[3])]
+                for net in sorted(iface.sta.scan(), key=lambda x: x[3])]
 
     async def api_connect(self, reader, writer, req):
         data = json.loads(await reader.read())
@@ -74,47 +74,28 @@ class WebApp(webserver.Webserver):
         logging.info('trying to connect to network %s' % (ssid,))
 
         try:
-            os.remove('/connected')
+            os.remove('/network.json')
         except OSError:
             pass
 
-        sta.active(True)
-        sta.connect(ssid, password)
+        iface.enable_station()
+        iface.sta.connect(ssid, password)
         self.state = STATE_CONNECTING
 
-        t_start = time.ticks_ms()
-        while True:
-            logging.debug('retry connection to network %s' % (ssid,))
-            if sta.isconnected():
-                logging.info('connected to network %s' % (ssid,))
-                with open('/connected', 'wb'):
-                    self.state = STATE_CONNECTED
-                break
+        connected = (await iface.wait_for_connection(self.connect_timeout))
+        if not connected:
+            logging.error('failed to connect to network %s' % (ssid,))
+            iface.disable_station()
+            self.state = STATE_FAILED
+        else:
+            logging.info('connected to network %s' % (ssid,))
+            with open('/network.json', 'wb') as fd:
+                fd.write(json.dumps({'ssid': ssid, 'password': password}))
+                self.state = STATE_CONNECTED
 
-            t_now = time.ticks_ms()
-            if time.ticks_diff(t_now, t_start) > self.connect_timeout:
-                logging.error('failed to connect to network %s' % (ssid,))
-                sta.active(False)
-                self.state = STATE_FAILED
-                break
 
-            await asyncio.sleep(1)
-
-    def get_network_state(self):
-        return {
-            'state': self.state,
-            'ap': {
-                'active': ap.active(),
-                'ssid': ap.config('essid'),
-                'ifconfig': ap.ifconfig(),
-            },
-            'sta': {
-                'active': sta.active(),
-                'connected': sta.isconnected(),
-                'ifconfig': sta.ifconfig(),
-                'rssi': sta.status('rssi'),
-            },
-        }
+def prep():
+    iface.enable_ap()
 
 
 def init_tasks(loop):

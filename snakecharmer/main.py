@@ -4,9 +4,10 @@ import network
 import sys
 import time
 
-from snakecharmer import logging
-from snakecharmer import hardware
 from snakecharmer import config
+from snakecharmer import hardware
+from snakecharmer import iface
+from snakecharmer import logging
 from snakecharmer import utils
 
 
@@ -20,7 +21,7 @@ def check_config_mode():
     button_released = False
 
     logging.debug('check for flag file')
-    if not utils.file_exists('/connected'):
+    if not utils.file_exists(iface.cfg_file):
         logging.debug('no flag file')
         return True
 
@@ -42,17 +43,6 @@ def check_config_mode():
     return False
 
 
-def wait_for_connection():
-    logging.info('waiting for network')
-    sta = network.WLAN(network.STA_IF)
-    hardware.display.show('conn')
-    while not sta.isconnected():
-        machine.idle()
-
-    ifcfg = sta.ifconfig()
-    hardware.display.scroll(ifcfg[0])
-
-
 def main():
     try:
         config.read_config()
@@ -62,12 +52,14 @@ def main():
         if check_config_mode():
             from snakecharmer import mode_config as mode
             logging.info('entering config mode')
-            hardware.display.show('conf')
+            mode_name = 'conf'
         else:
             from snakecharmer import mode_control as mode
-            wait_for_connection()
             logging.info('entering control mode')
-            hardware.display.show('run ')
+            mode_name = 'ctrl'
+
+        hardware.display.show(mode_name)
+        mode.prep()
 
         loop = asyncio.get_event_loop()
         tasks = mode.init_tasks(loop)
